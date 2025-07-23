@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  currency_converter:
+    build:
+      context: .
+      args:
+        ENV_STATE: ${ENV_STATE}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    volumes:
+      - .:/app
+    user: "1000:1000"  # Use your UID:GID here
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.currency-converter.rule=Host(`currency-converter.dixeam.com`)"
+      - "traefik.http.routers.currency-converter.entrypoints=web"
+      - "traefik.http.services.currency-converter.loadbalancer.server.port=8001"
+    networks:
+      - app-network
+    env_file:
+      - ".env"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+
+networks:
+  app-network:
+    external: true

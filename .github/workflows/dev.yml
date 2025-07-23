@@ -1,0 +1,58 @@
+name: Deploy Currency Convertor (Production)
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🚀 Deploy to server using SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            # Create directory if it doesn't exist
+            mkdir -p /home/qaiser/projects/currency_converter
+
+            # Clean the directory but preserve the .env file if it exists
+            cd /home/qaiser/projects/currency_converter
+            find . -not -name '.env' -delete
+
+      - name: 📂 Upload project files to server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          source: "."
+          target: "/home/qaiser/projects/currency_converter"
+          strip_components: 0
+
+      - name: 🔐 Upload .env file from secret
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            # Write the secret content using base64 to avoid character escaping issues
+            echo '${{ secrets.ENV }}' | tr -d '\r' > /home/qaiser/projects/currency_converter/.env
+      
+      - name: 🐳 Run Docker + Alembic on Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd /home/qaiser/projects/currency_converter
+            docker compose down
+            docker compose up -d
