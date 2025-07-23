@@ -1,33 +1,47 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field
+import os
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
-class GeneralConfig(BaseSettings):
+class GeneralConfig(BaseModel):
     # Environment
     ENV_STATE: str = Field(default="dev")
     API_URL: str = Field(default="http://localhost:8000")
     API_KEY: str | None = None
 
-    # Database
-    POSTGRES_HOST: str
-    POSTGRES_NAME: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
-    DATABASE_URL: str
-    POSTGRES_DATA_PATH: str | None = None
+    # Database Settings
+    POSTGRES_NAME: str | None = Field(default=None)
+    POSTGRES_USER: str | None = Field(default=None)
+    POSTGRES_PASSWORD: str | None = Field(default=None)
+    POSTGRES_DATA_PATH: str | None = Field(default=None)
+    DATABASE_URL: str | None = Field(default=None)
+    
 
     # DigitalOcean Spaces (S3)
-    DO_SPACES_ENDPOINT: str
-    DO_SPACES_REGION: str
-    DO_SPACES_KEY: str
-    DO_SPACES_SECRET: str
-    DO_SPACES_BUCKET: str
+    DO_SPACES_ENDPOINT: str | None = None
+    DO_SPACES_REGION: str | None = None
+    DO_SPACES_KEY: str | None = None
+    DO_SPACES_SECRET: str | None = None
+    DO_SPACES_BUCKET: str | None = None
     DO_SPACES_CDN_URL: str | None = None
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # API Keys
+    OPENEXCHANGERATES_API_KEY: str | None = None
+    COINMARKETCAP_API_KEY: str | None = None
+    OPENEXCHANGERATES_CRON_KEY: str | None = None
+
+    def __init__(self, **kwargs):
+        # Load from environment variables
+        env_values = {}
+        for field_name in self.__fields__.keys():
+            env_value = os.getenv(field_name)
+            env_values[field_name] = env_value
+                    
+        # Merge with any passed kwargs
+        env_values.update(kwargs)
+        super().__init__(**env_values)
 
 
 # Singleton instance

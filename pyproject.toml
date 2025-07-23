@@ -1,25 +1,94 @@
 [tool.poetry]
-name = "Currency Converter Offline Backend"
+name = "spending-crow-backend"
 version = "0.1.0"
-description = ""
-authors = ["Qaiser <link2qaiser@gmail.com>"]
+description = "SpendingCrow is an expense tracking and personal finance management application"
+authors = ["bucky <link2qaiser@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "currency-converter-offline-backend"}]
+packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+# Core FastAPI dependencies
 fastapi = "^0.115.12"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
-httpx = "^0.28.1"
-boto3 = "^1.38.46"
-urllib3 = "1.26.20"
-pydantic-settings = "^2.10.1"
-sqlalchemy = {extras = ["asyncio"], version = "^2.0.41"}
+starlette = "^0.46.1"
+pydantic = "^2.11.2"
+pydantic-core = "^2.33.1"
+anyio = "^4.9.0"
+sniffio = "^1.3.1"
+typing-extensions = "^4.13.1"
+
+# Database dependencies
+alembic = "^1.15.2"
 asyncpg = "^0.30.0"
 psycopg = {extras = ["binary"], version = "^3.2.9"}
-psycopg2-binary = "2.9.9"
+psycopg2-binary = "^2.9.10"
+sqlalchemy = "^2.0.40"
+greenlet = "^3.1.1"
 
+# Authentication & Security
+bcrypt = "^3.2.0"
+cryptography = "^44.0.2"
+passlib = "^1.7.4"
+pyjwt = "^2.10.1"
+python-jose = "^3.4.0"
+ecdsa = "^0.19.1"
+pyasn1 = "^0.4.8"
+rsa = "^4.9"
+cffi = "^1.17.1"
+pycparser = "^2.22"
+
+# HTTP & Web
+aiohttp = "^3.11.18"
+aiohappyeyeballs = "^2.6.1"
+aiosignal = "^1.3.2"
+attrs = "^25.3.0"
+frozenlist = "^1.6.0"
+multidict = "^6.4.3"
+propcache = "^0.3.1"
+yarl = "^1.20.0"
+requests = "^2.32.3"
+urllib3 = "^2.3.0"
+certifi = "^2025.1.31"
+charset-normalizer = "^3.4.1"
+idna = "^3.10"
+
+# AWS & Cloud Services
+boto3 = "^1.38.14"
+botocore = "^1.38.14"
+s3transfer = "^0.12.0"
+jmespath = "^1.0.1"
+
+# Email services
+sendgrid = "^6.12.2"
+python-http-client = "^3.3.7"
+email-validator = "^2.2.0"
+
+# Utilities
+click = "^8.1.8"
+python-dateutil = "^2.9.0"
+python-dotenv = "^1.1.0"
+python-multipart = "^0.0.20"
+pyyaml = "^6.0.2"
+six = "^1.17.0"
+werkzeug = "^3.1.3"
+dnspython = "^2.7.0"
+
+# Template engine
+mako = "^1.3.10"
+markupsafe = "^3.0.2"
+
+# Server & async
+h11 = "^0.14.0"
+httptools = "^0.6.4"
+uvloop = "^0.21.0"
+watchfiles = "^1.0.4"
+websockets = "^15.0.1"
+
+# Type checking
+typing-inspection = "^0.4.0"
+mailjet-rest = "^1.5.1"
 
 [tool.poetry.group.dev.dependencies]
 colorlog = "^6.7.0"
@@ -28,9 +97,12 @@ pytest = "^8.1.1"
 pytest-xdist = "^3.3.1"
 pytest-django = "^4.5.2"
 model-bakery = "^1.12.0"
-vcrpy = "^6.0.1"
 pytest-env = "^1.1.3"
 pytest-cov = "^5.0.0"
+vcrpy = ">=5.0.0,<6.0.0"
+faker = "^37.4.2"
+factory-boy = "^3.3.3"
+pytest-asyncio = "^1.1.0"
 
 [tool.isort]
 line_length = 119
