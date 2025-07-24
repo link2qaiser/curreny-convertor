@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import aiohttp
 import logging
-
+from datetime import datetime, timedelta, timezone
 # Setup logger
 logger = logging.getLogger(__name__)
 
@@ -64,18 +64,25 @@ async def upload_to_s3():
 async def get_from_s3():
     key = f"{env_var.ENV_STATE}/currency/latest.json"
     service = S3Service()
+    expires_in = 86400  # 1 day
+
     try:
         signed_url = service.s3_client.generate_presigned_url(
             ClientMethod="get_object",
             Params={"Bucket": env_var.DO_SPACES_BUCKET, "Key": key},
-            ExpiresIn=300
+            ExpiresIn=expires_in
         )
+        expiry_time = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+        expiry_unix_timestamp = int(expiry_time.timestamp())
+
         logger.info(f"Generated signed S3 URL: {signed_url}")
-        return {"url": signed_url}
+        return {
+            "url": signed_url,
+            "expires_at": expiry_unix_timestamp
+        }
     except Exception as e:
         logger.exception("Failed to generate signed S3 URL")
         return {"error": str(e)}
-
 
 async def fetch_openexchange_rates() -> dict:
     try:
