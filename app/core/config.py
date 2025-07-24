@@ -32,6 +32,11 @@ class GeneralConfig(BaseModel):
     COINMARKETCAP_API_KEY: str | None = None
     OPENEXCHANGERATES_CRON_KEY: str | None = None
 
+    WRITE_FILE_ON_S3: int = Field(default=60)
+    FETCH_API_DATA: int = Field(default=60)
+
+    # Interval for Jobs in minutes
+
     def __init__(self, **kwargs):
         # Load from environment variables
         env_values = {}
