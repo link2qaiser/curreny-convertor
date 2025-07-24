@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "spending-crow-backend"
+name = "curreny-convertor"
 version = "0.1.0"
-description = "SpendingCrow is an expense tracking and personal finance management application"
+description = "Currency Convertot is an manage the currencies via api"
 authors = ["bucky <link2qaiser@gmail.com>"]
 license = "MIT"
 readme = "README.md"

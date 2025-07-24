@@ -53,7 +53,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
-            cd /home/qaiser/projects/spendingcrow
+            cd /home/qaiser/projects/currency_converter
             docker compose down
             docker compose up -d
             docker compose exec -T currency_convertor alembic upgrade head

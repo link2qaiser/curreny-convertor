@@ -1,411 +1,411 @@
-# SpendingCrow
+# Currency Converter
 
-SpendingCrow is an expense tracking and personal finance management application built with FastAPI, PostgreSQL, and modern development tools.
+A real-time currency converter application built with FastAPI that provides up-to-date exchange rates and seamless currency conversion between multiple international currencies.
 
-## Project Structure
+## Table of Contents
 
-```
-spending-crow/
-├── .github/workflows/
-│   └── main.yml
-├── alembic/
-│   ├── versions/
-│   ├── env.py
-│   ├── README
-│   └── script.py.mako
-├── app/
-│   ├── auth/
-│   │   ├── __init__.py
-│   │   ├── jwt_handler.py
-│   │   ├── routes.py
-│   │   ├── service.py
-│   │   ├── social.py
-│   │   └── utils.py
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── user.py
-│   ├── profile/
-│   │   ├── __init__.py
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── schemas.py
-│   │   └── service.py
-│   ├── schemas/
-│   │   ├── __init__.py
-│   │   └── user.py
-│   ├── core/
-│   │   ├── config.py
-│   │   └── database.py
-│   ├── __init__.py
-│   └── main.py
-├── .env
-├── .env.example
-├── .gitignore
-├── alembic.ini
-├── docker-compose.local.yml
-├── docker-compose.yml
-├── Dockerfile
-├── Makefile
-├── poetry.lock
-├── pyproject.toml
-├── README.md
-├── requirements.txt
-└── requirements-dev.txt
+- [Installation](#installation)
+- [Usage](#usage)
+- [Development Commands](#development-commands)
+- [Features](#features)
+- [API Documentation](#api-documentation)
+- [Configuration](#configuration)
+- [Database Management](#database-management)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/username/currency-converter.git
+
+# Navigate to project directory
+cd currency-converter
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your configuration
+nano .env
+
+# Start the development environment
+make server-up
 ```
 
-## Prerequisites
+## Usage
+
+### Quick Start
+
+```bash
+# Show all available commands
+make help
+
+# Start the FastAPI development server
+make server-up
+
+# Visit http://localhost:8000 for the web interface
+# Visit http://localhost:8000/docs for API documentation
+```
+
+## Development Commands
+
+The project includes a comprehensive Makefile with colored output for easy development:
+
+### 🐳 Server Management
+
+```bash
+make server-up        # Start the development server
+make server-down      # Stop the development server  
+make server-restart   # Restart the development server
+make server-logs      # Show server logs
+make server-clean     # Stop server and clean up containers
+```
+
+### 🗄️ Database Migrations
+
+```bash
+make migrate-up       # Upgrade one revision (+1)
+make migrate-up-all   # Upgrade all migrations to head
+make migrate-down     # Downgrade one revision (-1)
+make migrate-down-all # Downgrade all the way to base
+```
+
+### 🧪 Testing
+
+```bash
+make test            # Run all tests
+make test-cov        # Run tests with coverage report
+```
+
+### 📦 Requirements Management
+
+```bash
+make requirements       # Generate requirements based on ENV_STATE
+                       # Dev: generates both requirements.txt and requirements-dev.txt
+                       # Prod: generates only requirements.txt
+
+make requirements-dev   # Generate requirements-dev.txt (includes dev dependencies)
+make requirements-prod  # Generate requirements.txt (production only)
+```
+
+### Getting Help
+
+```bash
+make help              # Show all available commands with descriptions
+```
+
+## Features
+
+- **Real-time Exchange Rates**: Fetches current exchange rates from reliable APIs
+- **Multi-Currency Support**: Supports 150+ international currencies
+- **FastAPI Backend**: High-performance async API with automatic documentation
+- **Database Migrations**: Alembic-powered database schema management
+- **Docker Development**: Containerized development environment
+- **Automated Testing**: Comprehensive test suite with coverage reporting
+- **Poetry Integration**: Modern Python dependency management
+- **Environment-Aware**: Smart development/production configuration
+
+## API Documentation
+
+When the server is running, comprehensive API documentation is available:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Main Endpoints
+
+- `GET /` - Web interface home page
+- `GET /api/rates` - Get current exchange rates
+- `GET /api/convert?from=USD&to=EUR&amount=100` - Convert currency
+- `GET /api/currencies` - List supported currencies
+- `GET /api/historical?date=2024-01-01&from=USD&to=EUR` - Historical rates
+
+### Example API Usage
+
+```bash
+# Get current rates
+curl "http://localhost:8000/api/rates"
+
+# Convert currency
+curl "http://localhost:8000/api/convert?from=USD&to=EUR&amount=100"
+
+# Get supported currencies
+curl "http://localhost:8000/api/currencies"
+```
+
+### Example Response
+
+```json
+{
+  "from": "USD",
+  "to": "EUR",
+  "amount": 100,
+  "result": 85.23,
+  "rate": 0.8523,
+  "timestamp": "2024-01-15T10:30:00Z",
+  "provider": "ExchangeRate-API"
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+Copy the example environment file and configure it:
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit with your actual values
+nano .env
+```
+
+The `.env.example` file contains all required configuration variables:
+
+```env
+# Environment Configuration
+ENV_STATE=dev
+API_URL=http://localhost:8000
+
+# Database Configuration
+POSTGRES_NAME=currency_convertor
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_postgres_password_here
+DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_NAME}
+POSTGRES_DATA_PATH=/path/to/your/databases/currency_convertor
+
+# PgAdmin Configuration
+PGADMIN_DEFAULT_EMAIL=admin@example.com
+PGADMIN_DEFAULT_PASSWORD=your_pgadmin_password_here
+
+# Internal API Key
+API_KEY=your_internal_api_key_here
+
+# Open Exchange Rates API
+OPENEXCHANGERATES_API_KEY=your_openexchangerates_api_key_here
+OPENEXCHANGERATES_CRON_KEY=your_secure_cron_key_here
+
+# CoinMarketCap API
+COINMARKETCAP_API_KEY=your_coinmarketcap_api_key_here
+
+# Digital Ocean Spaces (S3) Configuration
+DO_SPACES_ENDPOINT=https://your-region.digitaloceanspaces.com
+DO_SPACES_REGION=your_region
+DO_SPACES_KEY=your_do_spaces_key_here
+DO_SPACES_SECRET=your_do_spaces_secret_here
+DO_SPACES_BUCKET=your_bucket_name
+DO_SPACES_CDN_URL=https://your-region.digitaloceanspaces.com/your_bucket_name
+
+# Job Intervals (in minutes)
+WRITE_FILE_ON_S3=60
+FETCH_API_DATA=60
+```
+
+### Required API Keys
+
+To fully configure the application, you'll need to obtain API keys from:
+
+1. **Open Exchange Rates**: [https://openexchangerates.org/](https://openexchangerates.org/)
+   - Sign up for a free account to get `OPENEXCHANGERATES_API_KEY`
+   - Generate a secure cron key for `OPENEXCHANGERATES_CRON_KEY`
+
+2. **CoinMarketCap**: [https://coinmarketcap.com/api/](https://coinmarketcap.com/api/)
+   - Register for API access to get `COINMARKETCAP_API_KEY`
+
+3. **Digital Ocean Spaces** (Optional): [https://www.digitalocean.com/products/spaces/](https://www.digitalocean.com/products/spaces/)
+   - Set up a Spaces bucket for file storage
+   - Get access key and secret for S3-compatible storage
+
+### Docker Configuration
+
+The project uses Docker Compose for development with the following configuration:
+
+```yaml
+# docker-compose.local.yml
+services:
+  - Web application (FastAPI) - Port 8000
+  - PostgreSQL database - Port 5432  
+  - PgAdmin (database management) - Port 8080
+```
+
+**Important**: The Docker configuration uses environment variables from your `.env` file:
+- `POSTGRES_DATA_PATH` determines where database data is stored on your host
+- `POSTGRES_NAME`, `POSTGRES_USER`, `POSTGRES_PASSWORD` configure the database
+- `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD` set up PgAdmin access
+
+## Database Management
+
+### Migration Commands
+
+The project uses Alembic for database migrations:
+
+```bash
+# Apply all pending migrations
+make migrate-up-all
+
+# Apply one migration
+make migrate-up
+
+# Rollback one migration
+make migrate-down
+
+# Rollback to base (WARNING: destroys data)
+make migrate-down-all
+```
+
+### Creating New Migrations
+
+```bash
+# Access the container to create migrations
+docker compose -f docker-compose.local.yml exec web bash
+
+# Inside the container
+alembic revision --autogenerate -m "description of changes"
+
+# Then apply the migration
+make migrate-up
+```
+
+### Database Access
+
+Access the database directly:
+
+```bash
+# Via PgAdmin web interface
+# Visit http://localhost:8080 (credentials in .env)
+
+# Via command line
+docker compose -f docker-compose.local.yml exec db psql -U postgres -d currency_converter
+```
+
+## Development
+
+### Prerequisites
 
 - Docker and Docker Compose
 - Make (for development commands)
 - Poetry (for dependency management)
 - Python 3.11+ (optional, for local development)
 
-## Quick Start
-
-### 1. Clone and Setup
+### Development Workflow
 
 ```bash
-git clone https://github.com/yourusername/spending-crow.git
-cd spending-crow
-cp .env.example .env
-# Edit .env file with your configuration
-```
-
-### 2. Start Development Environment
-
-```bash
-# Start all services (database, web app, pgadmin)
+# 1. Start the development environment
 make server-up
 
-# Run database migrations
-make migrate
+# 2. Make code changes...
 
-# Access the application
-open http://localhost:8000
-```
-
-### 3. View Logs
-```bash
+# 3. View logs to debug
 make server-logs
-```
 
-## Development Commands
-
-The project includes a comprehensive Makefile for easy development:
-
-### 🐳 Server Management
-```bash
-make server-up        # Start development server
-make server-down      # Stop development server
-make server-restart   # Restart development server
-make server-logs      # Show server logs
-make server-clean     # Stop server and cleanup containers
-```
-
-### 🗄️ Database Migrations
-```bash
-make migrate          # Run database migrations
-make migrate-down     # Rollback last migration
-make migration msg="add user table"  # Create new migration
-```
-
-### 🧪 Testing
-```bash
-make test            # Run all tests
-make test-cov        # Run tests with coverage
-```
-
-### 📦 Requirements Management
-```bash
-make requirements     # Generate requirements based on ENV_STATE from .env
-                     # Dev: generates both requirements.txt and requirements-dev.txt
-                     # Prod: generates only requirements.txt
-
-make requirements-dev    # Always generate requirements-dev.txt (includes dev deps)
-make requirements-prod   # Always generate requirements.txt (production only)
-```
-
-### 📋 Help
-```bash
-make help           # Show all available commands with descriptions
-```
-
-## Environment Configuration
-
-The application uses environment-based configuration controlled by the `ENV_STATE` variable:
-
-### Development (.env)
-```bash
-ENV_STATE=dev
-DATABASE_URL=postgresql://postgres:password@db:5432/spendingcrow
-API_URL=http://localhost:8000
-POSTGRES_NAME=spendingcrow
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-POSTGRES_DATA_PATH=./postgres_data
-
-# Authentication
-JWT_SECRET_KEY=your_dev_secret_key
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Social Auth Providers
-FACEBOOK_APP_ID=your_facebook_app_id
-FACEBOOK_APP_SECRET=your_facebook_app_secret
-
-# PgAdmin
-PGADMIN_DEFAULT_EMAIL=admin@example.com
-PGADMIN_DEFAULT_PASSWORD=admin123
-```
-
-### Production
-Production configuration is managed via GitHub Secrets and sets `ENV_STATE=prod`.
-
-## Dependency Management
-
-This project uses **Poetry** for dependency management with automatic environment-aware builds:
-
-- **Development**: All dependencies including testing tools (pytest, coverage, etc.)
-- **Production**: Only production dependencies for optimized containers
-
-### Managing Dependencies
-
-#### Adding Dependencies
-```bash
-# Add a production dependency
-poetry add package-name
-
-# Add a development dependency  
-poetry add --group dev package-name
-
-# Remove a dependency
-poetry remove package-name
-```
-
-#### Generating Requirements Files
-```bash
-# Smart generation based on your .env ENV_STATE
-make requirements
-
-# Specific generation
-make requirements-prod    # Production requirements only
-make requirements-dev     # All dependencies including dev tools
-
-# Or use Poetry directly
-poetry export -f requirements.txt --output requirements.txt --without-hashes
-poetry export -f requirements.txt --output requirements-dev.txt --with dev --without-hashes
-```
-
-#### Before Deployment
-Always generate fresh requirements files before deploying:
-```bash
-make requirements-prod
-git add requirements.txt
-git commit -m "Update production requirements"
-```
-
-## Docker Configuration
-
-### Smart Environment-Aware Builds
-The Dockerfile automatically detects your environment and installs appropriate dependencies:
-
-- **Development** (`ENV_STATE=dev`): Installs all dependencies from Poetry
-- **Production** (`ENV_STATE=prod`): Installs only from requirements.txt
-
-### Development Environment
-- **File**: `docker-compose.local.yml`
-- **Services**: PostgreSQL, PgAdmin, Web Application
-- **Features**: Hot reloading, all dev dependencies, debugging tools
-
-### Production Environment  
-- **File**: `docker-compose.yml`
-- **Services**: Web Application only
-- **Features**: Optimized build, production dependencies only
-
-## Database Access
-
-### PgAdmin (Development)
-- **URL**: http://localhost:8080
-- **Email**: Value from `PGADMIN_DEFAULT_EMAIL`
-- **Password**: Value from `PGADMIN_DEFAULT_PASSWORD`
-
-### Direct PostgreSQL Access
-```bash
-# Access via Docker
-docker compose -f docker-compose.local.yml exec db psql -U postgres -d spendingcrow
-```
-
-## API Documentation
-
-When running, API documentation is available at:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## Deployment
-
-The project uses GitHub Actions for automated deployment:
-
-1. **Push to `dev` branch** triggers deployment
-2. **Automatic deployment** to production server
-3. **Database migrations** run automatically
-4. **Environment variables** managed via GitHub Secrets
-
-### Manual Deployment Commands
-```bash
-# On production server
-docker compose down
-docker compose up -d
-docker compose exec -T spendingcrow alembic upgrade head
-```
-
-## Currency Rate Updates
-
-SpendingCrow includes a secure endpoint for updating currency exchange rates:
-
-```
-POST /currency/update-rates
-```
-
-### Setup Automated Updates
-
-1. **Add to `.env`**:
-```bash
-API_URL=https://spendingcrow.dixeam.com
-OPENEXCHANGERATES_CRON_KEY=your_secure_cron_key
-```
-
-2. **Create update script** (`scripts/update-rates.sh`):
-```bash
-#!/bin/bash
-set -o allexport
-source .env
-set +o allexport
-
-curl -X 'POST' "$API_URL/currency/update-rates" \
-  -H "accept: application/json" \
-  -H "x-cron-key: ${OPENEXCHANGERATES_CRON_KEY}" \
-  -d ''
-```
-
-3. **Setup cron job**:
-```bash
-0 * * * * /path/to/scripts/update-rates.sh >> /var/log/currency-update.log 2>&1
-```
-
-## Development Workflow
-
-### Daily Development
-```bash
-# Start development environment
-make server-up
-
-# Make code changes...
-
-# Add new dependencies if needed
-poetry add new-package
-
-# Update requirements for deployment
-make requirements
-
-# Create database migration
-make migration msg="add new feature"
-
-# Run migrations
-make migrate
-
-# Run tests
+# 4. Run tests
 make test
 
-# View logs
-make server-logs
+# 5. Add new dependencies (if needed)
+poetry add new-package
+
+# 6. Update requirements
+make requirements
+
+# 7. Create database migration (if schema changed)
+# Access container and run: alembic revision --autogenerate -m "description"
+
+# 8. Apply migrations
+make migrate-up
+
+# 9. Restart server to see changes
+make server-restart
 ```
 
-### Before Deployment
+### Adding Dependencies
+
 ```bash
-# Update production requirements
-make requirements-prod
+# Add a production dependency
+poetry add fastapi-new-feature
 
-# Commit all changes
-git add pyproject.toml poetry.lock requirements.txt
-git commit -m "Add new feature and update dependencies"
-git push origin dev  # Triggers automatic deployment
-```
+# Add a development dependency  
+poetry add --group dev pytest-new-tool
 
-### Working with Dependencies
-```bash
-# Add a new production dependency
-poetry add fastapi-users
-make requirements-prod
-
-# Add a new development tool
-poetry add --group dev black
-make requirements-dev
+# Update requirements files
+make requirements
 
 # Remove a dependency
 poetry remove unused-package
-make requirements
-
-# Update all dependencies
-poetry update
-make requirements
 ```
 
-## Troubleshooting
+### Project Structure
 
-### Container Issues
+```
+currency-converter/
+├── .github/workflows/     # CI/CD workflows
+├── alembic/              # Database migrations
+│   └── versions/         # Migration files
+├── app/                  # Main application code
+│   ├── api/             # API endpoints
+│   ├── core/            # Core configuration
+│   ├── models/          # Database models
+│   ├── schemas/         # Pydantic schemas
+│   └── services/        # Business logic
+├── tests/               # Test files
+├── docker-compose.local.yml
+├── Dockerfile
+├── Makefile            # Development commands
+├── pyproject.toml      # Poetry configuration
+├── requirements.txt    # Production dependencies
+└── requirements-dev.txt # Development dependencies
+```
+
+### Testing
+
 ```bash
-# Rebuild containers
-make server-down
-docker compose -f docker-compose.local.yml build --no-cache
-make server-up
+# Run all tests
+make test
 
-# Clean up Docker resources
-make server-clean
+# Run tests with coverage
+make test-cov
+
+# View coverage report
+# Open htmlcov/index.html in browser after running test-cov
 ```
 
-### Database Issues
+### Troubleshooting
+
+#### Container Issues
+```bash
+# Clean up and rebuild
+make server-clean
+make server-up
+```
+
+#### Database Issues
 ```bash
 # Reset database (WARNING: destroys data)
 make server-down
-docker volume rm spending-crow_postgres_data
+docker volume rm currency-converter_postgres_data
 make server-up
-make migrate
+make migrate-up-all
 ```
 
-### Dependency Issues
+#### Dependency Issues
 ```bash
-# Regenerate lock file
+# Regenerate Poetry lock file
 poetry lock
 
-# Regenerate requirements files
+# Update requirements
 make requirements
-
-# Check for dependency conflicts
-poetry check
 ```
 
-### Logs and Debugging
-```bash
-# View application logs
-make server-logs
 
-# Access container shell
-docker compose -f docker-compose.local.yml exec web bash
 
-# Check installed packages in container
-docker compose -f docker-compose.local.yml exec web pip list
-```
 
-## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Install dependencies: `poetry install`
-4. Make changes and test: `make test`
-5. Update requirements: `make requirements`
-6. Commit changes: `git commit -am 'Add new feature'`
-7. Push to branch: `git push origin feature/new-feature`
-8. Create Pull Request
+## Acknowledgments
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- [FastAPI](https://fastapi.tiangolo.com/) for the excellent web framework
+- [ExchangeRate-API](https://exchangerate-api.com/) for providing exchange rate data
+- [Poetry](https://python-poetry.org/) for dependency management
+- [Alembic](https://alembic.sqlalchemy.org/) for database migrations
+- Contributors and community members
