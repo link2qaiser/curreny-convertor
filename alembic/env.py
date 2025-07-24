@@ -27,7 +27,7 @@ from app.core.database import Base
 # Target metadata for autogenerate support
 target_metadata = Base.metadata
 # Convert async URL to sync for Alembic
-DATABASE_URL = env_var.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+DATABASE_URL = env_var.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://").replace("%", "%%")
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # other values from the config, defined by the needs of env.py,
