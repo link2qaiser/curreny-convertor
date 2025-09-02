@@ -38,10 +38,10 @@ async def start_background_tasks():
                 logger.info("✅ Currency rates update completed")
             except Exception as e:
                 logger.error(f"❌ Currency rates update failed: {e}")
-            await asyncio.sleep(3600)  # Wait 1 hour
+            await asyncio.sleep(env_var.FETCH_API_DATA)  # Wait 1 hour
     
     # Create both background tasks
     asyncio.create_task(periodic_s3_upload())
-    #asyncio.create_task(periodic_currency_update())
+    asyncio.create_task(periodic_currency_update())
     
     logger.info("🚀 Background tasks started successfully")
