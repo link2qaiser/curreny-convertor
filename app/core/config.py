@@ -32,6 +32,9 @@ class GeneralConfig(BaseModel):
     COINMARKETCAP_API_KEY: str | None = None
     OPENEXCHANGERATES_CRON_KEY: str | None = None
 
+    # Notifications
+    SLACK_WEBHOOK_URL: str | None = None
+
     WRITE_FILE_ON_S3: int = Field(default=60)
     FETCH_API_DATA: int = Field(default=60)
 
