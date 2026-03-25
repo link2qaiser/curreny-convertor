@@ -1,6 +1,7 @@
 from app.utils.database import async_session
 from .models import CurrencyRate
 from app.services.s3_service import S3Service
+from fastapi import HTTPException
 from app.core.config import env_var
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,7 +83,7 @@ async def get_from_s3():
         }
     except Exception as e:
         logger.exception("Failed to generate signed S3 URL")
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail="Failed to generate currency rates download URL")
 
 async def fetch_openexchange_rates() -> dict:
     try:

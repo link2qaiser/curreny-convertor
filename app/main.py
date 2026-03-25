@@ -10,7 +10,11 @@ from app.core.config import env_var
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(
+    title="Currency Converter API",
+    description="Provides pre-signed download URLs for the latest fiat and cryptocurrency exchange rates (150+ fiat currencies and top 50 cryptos, base USD). Rates are refreshed periodically from OpenExchangeRates and CoinMarketCap.",
+    version="1.0.0",
+)
 
 app.include_router(currency_router)
 
