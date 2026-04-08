@@ -79,3 +79,7 @@ alembic/versions/__pycache__/
 
 # Logs
 logs/
+
+# Claude Code
+CLAUDE.md
+CLAUDE.md

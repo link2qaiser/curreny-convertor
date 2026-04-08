@@ -35,6 +35,9 @@ class GeneralConfig(BaseModel):
     WRITE_FILE_ON_S3: int = Field(default=60)
     FETCH_API_DATA: int = Field(default=60)
 
+    # Slack
+    SLACK_WEBHOOK_URL: str | None = None
+
     # Interval for Jobs in minutes
 
     def __init__(self, **kwargs):
