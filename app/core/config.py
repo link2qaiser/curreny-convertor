@@ -35,6 +35,12 @@ class GeneralConfig(BaseModel):
     WRITE_FILE_ON_S3: int = Field(default=60)
     FETCH_API_DATA: int = Field(default=60)
 
+    # Rate limiting (per client IP, sliding window)
+    RATE_LIMIT_SOFT: int = Field(default=20)
+    RATE_LIMIT_HARD: int = Field(default=10)
+    RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60)
+    RATE_LIMIT_SOFT_DELAY_MS: int = Field(default=500)
+
     # Slack
     SLACK_WEBHOOK_URL: str | None = None
 
@@ -45,7 +51,8 @@ class GeneralConfig(BaseModel):
         env_values = {}
         for field_name in self.__fields__.keys():
             env_value = os.getenv(field_name)
-            env_values[field_name] = env_value
+            if env_value is not None:
+                env_values[field_name] = env_value
                     
         # Merge with any passed kwargs
         env_values.update(kwargs)
