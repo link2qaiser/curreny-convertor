@@ -1,5 +1,5 @@
 import os
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -35,17 +35,39 @@ class GeneralConfig(BaseModel):
     WRITE_FILE_ON_S3: int = Field(default=60)
     FETCH_API_DATA: int = Field(default=60)
 
+    # Rate limiting (per client IP, sliding window)
+    RATE_LIMIT_SOFT: int = Field(default=10)
+    RATE_LIMIT_HARD: int = Field(default=20)
+    RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60)
+    RATE_LIMIT_SOFT_DELAY_MS: int = Field(default=500)
+    # Cap on distinct IPs tracked in memory; oldest are evicted past this.
+    RATE_LIMIT_MAX_TRACKED_IPS: int = Field(default=10000)
+    # Comma-separated IPs/CIDRs allowed to set X-Forwarded-For (e.g. your
+    # reverse proxy). Empty = never trust XFF, always use the socket peer.
+    TRUSTED_PROXIES: str = Field(default="")
+
     # Slack
     SLACK_WEBHOOK_URL: str | None = None
 
     # Interval for Jobs in minutes
+
+    @model_validator(mode="after")
+    def _validate_rate_limits(self):
+        if self.RATE_LIMIT_SOFT >= self.RATE_LIMIT_HARD:
+            raise ValueError(
+                f"RATE_LIMIT_SOFT ({self.RATE_LIMIT_SOFT}) must be < "
+                f"RATE_LIMIT_HARD ({self.RATE_LIMIT_HARD}); otherwise the "
+                "soft-throttle path is unreachable."
+            )
+        return self
 
     def __init__(self, **kwargs):
         # Load from environment variables
         env_values = {}
         for field_name in self.__fields__.keys():
             env_value = os.getenv(field_name)
-            env_values[field_name] = env_value
+            if env_value is not None:
+                env_values[field_name] = env_value
                     
         # Merge with any passed kwargs
         env_values.update(kwargs)

@@ -9,6 +9,7 @@ from app.utils.logging_config import LOGGING_CONFIG
 from app.currency.routes import router as currency_router
 from app.core.config import env_var
 from app.services.slack_service import send_slack_alert
+from app.utils.rate_limit import RateLimitMiddleware
 from sqlalchemy import select
 # Load the logging config
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -20,6 +21,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.add_middleware(RateLimitMiddleware)
 app.include_router(currency_router)
 
 @app.on_event("startup")
