@@ -7,6 +7,7 @@ from app.utils.database import async_session
 from fastapi import FastAPI
 from app.utils.logging_config import LOGGING_CONFIG
 from app.currency.routes import router as currency_router
+from app.history.routes import router as history_router
 from app.core.config import env_var
 from app.services.slack_service import send_slack_alert
 from app.utils.rate_limit import RateLimitMiddleware
@@ -23,6 +24,7 @@ app = FastAPI(
 
 app.add_middleware(RateLimitMiddleware)
 app.include_router(currency_router)
+app.include_router(history_router)
 
 @app.on_event("startup")
 async def start_background_tasks():
