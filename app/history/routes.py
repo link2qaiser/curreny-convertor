@@ -27,9 +27,11 @@ async def _db():
         "Returns a time-ordered series of `base_currency -> quote_currency` "
         "exchange rates over the requested range, plus summary stats "
         "(starting_rate, current_rate, highest_rate, lowest_rate, "
-        "absolute_change, percent_change, direction).\n\n"
+        "absolute_change, percent_change, direction) and the window's "
+        "start_date / today_date.\n\n"
         "Spacing between points is chosen automatically: hourly for 1D/1W, "
-        "daily for 1M/3M/6M/1Y, weekly for 5Y."
+        "daily for 1M/3M/6M/1Y, weekly for 3Y/5Y, monthly for 10Y. "
+        "For ALL, spacing auto-scales to whatever data exists."
     ),
     responses={
         200: {"model": CurrencyHistoryResponse},

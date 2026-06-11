@@ -25,16 +25,31 @@ SUPPORTED_CURRENCY_CODES: frozenset[str] = frozenset(
     c.name for c in CurrencyRate.__table__.columns if c.name not in _RESERVED_COLUMNS
 )
 
-# (window_delta, bucket_unit) per range. bucket_unit None = raw hourly rows.
-_RANGE_CONFIG: dict[HistoryRange, tuple[timedelta, str | None]] = {
-    HistoryRange.ONE_DAY:      (timedelta(days=1),     None),
-    HistoryRange.ONE_WEEK:     (timedelta(days=7),     None),
-    HistoryRange.ONE_MONTH:    (timedelta(days=30),    "day"),
-    HistoryRange.THREE_MONTHS: (timedelta(days=90),    "day"),
-    HistoryRange.SIX_MONTHS:   (timedelta(days=180),   "day"),
-    HistoryRange.ONE_YEAR:     (timedelta(days=365),   "day"),
-    HistoryRange.FIVE_YEARS:   (timedelta(days=365*5), "week"),
+# (window_delta, bucket_unit) per range.
+# bucket_unit None = raw hourly rows; window None = "all available data".
+_RANGE_CONFIG: dict[HistoryRange, tuple[timedelta | None, str | None]] = {
+    HistoryRange.ONE_DAY:      (timedelta(days=1),      None),
+    HistoryRange.ONE_WEEK:     (timedelta(days=7),      None),
+    HistoryRange.ONE_MONTH:    (timedelta(days=30),     "day"),
+    HistoryRange.THREE_MONTHS: (timedelta(days=90),     "day"),
+    HistoryRange.SIX_MONTHS:   (timedelta(days=180),    "day"),
+    HistoryRange.ONE_YEAR:     (timedelta(days=365),    "day"),
+    HistoryRange.THREE_YEARS:  (timedelta(days=365*3),  "week"),
+    HistoryRange.FIVE_YEARS:   (timedelta(days=365*5),  "week"),
+    HistoryRange.TEN_YEARS:    (timedelta(days=365*10), "month"),
+    HistoryRange.ALL:          (None,                   None),  # auto-picked below
 }
+
+
+def _auto_bucket_for_span(span: timedelta) -> str | None:
+    """Pick a bucket size so the chart has a sensible number of points."""
+    if span <= timedelta(days=7):
+        return None  # raw hourly
+    if span <= timedelta(days=90):
+        return "day"
+    if span <= timedelta(days=365 * 3):
+        return "week"
+    return "month"
 
 
 def _build_point(ts: datetime, base_value: float, quote_value: float) -> HistoryPoint:
@@ -67,10 +82,30 @@ async def get_currency_history(
         raise HTTPException(status_code=400, detail=f"Unsupported quote currency: {quote}")
 
     window, bucket_unit = _RANGE_CONFIG[range_]
-    since = datetime.now(timezone.utc) - window
+    now = datetime.now(timezone.utc)
+    today_iso = now.isoformat().replace("+00:00", "Z")
 
     base_col = getattr(CurrencyRate, base)
     quote_col = getattr(CurrencyRate, quote)
+
+    # For ALL: window starts at the earliest available row; bucket auto-picked from span.
+    if window is None:
+        earliest_row = (await db.execute(
+            select(func.min(CurrencyRate.created_at))
+            .where(base_col.isnot(None))
+            .where(quote_col.isnot(None))
+            .where(base_col > 0)
+        )).scalar_one_or_none()
+        if earliest_row is None:
+            return CurrencyHistoryResponse(
+                base_currency=base, quote_currency=quote, range=range_,
+                interval="hour", today_date=today_iso, data_points=[],
+            )
+        earliest = earliest_row if earliest_row.tzinfo else earliest_row.replace(tzinfo=timezone.utc)
+        since = earliest
+        bucket_unit = _auto_bucket_for_span(now - earliest)
+    else:
+        since = now - window
 
     if bucket_unit is None:
         stmt = (
@@ -102,12 +137,16 @@ async def get_currency_history(
         ]
         interval = bucket_unit
 
+    start_iso = since.isoformat().replace("+00:00", "Z")
+
     if not data_points:
         return CurrencyHistoryResponse(
             base_currency=base,
             quote_currency=quote,
             range=range_,
             interval=interval,
+            start_date=start_iso,
+            today_date=today_iso,
             data_points=[],
         )
 
@@ -129,6 +168,8 @@ async def get_currency_history(
         quote_currency=quote,
         range=range_,
         interval=interval,
+        start_date=start_iso,
+        today_date=today_iso,
         starting_rate=starting_rate,
         current_rate=current_rate,
         highest_rate=highest_rate,

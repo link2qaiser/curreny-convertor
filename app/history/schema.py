@@ -9,7 +9,10 @@ class HistoryRange(str, Enum):
     THREE_MONTHS = "3M"
     SIX_MONTHS = "6M"
     ONE_YEAR = "1Y"
+    THREE_YEARS = "3Y"
     FIVE_YEARS = "5Y"
+    TEN_YEARS = "10Y"
+    ALL = "ALL"
 
 
 class TrendDirection(str, Enum):
@@ -28,7 +31,14 @@ class CurrencyHistoryResponse(BaseModel):
     base_currency: str = Field(..., description="The currency you are converting FROM, e.g. AED")
     quote_currency: str = Field(..., description="The currency you are converting TO, e.g. PKR")
     range: HistoryRange = Field(..., description="Time window of the data series")
-    interval: str = Field(..., description="Spacing between data points: hour, day, or week")
+    interval: str = Field(..., description="Spacing between data points: hour, day, week, or month")
+
+    start_date: str | None = Field(
+        None, description="Window start date (ISO 8601, UTC). For ALL, this is the earliest available data."
+    )
+    today_date: str = Field(
+        ..., description="Server's current date (ISO 8601, UTC) at the time of the request."
+    )
 
     starting_rate: float | None = Field(None, description="Rate at the beginning of the range")
     current_rate: float | None = Field(None, description="Most recent rate (end of the range)")
