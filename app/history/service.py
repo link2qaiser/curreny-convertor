@@ -1,6 +1,6 @@
 import logging
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select, func
@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.currency.models import CurrencyRate
 from .schema import (
-    HistoryRange,
     HistoryPoint,
     CurrencyHistoryResponse,
     TrendDirection,
@@ -24,6 +23,12 @@ PERCENT_SIG_FIGURES = 3
 DECIMALS_MIN = 2
 DECIMALS_MAX = 10
 
+# Whitelist of valid currency column names — prevents SQL injection via user input.
+_RESERVED_COLUMNS = {"id", "created_at"}
+SUPPORTED_CURRENCY_CODES: frozenset[str] = frozenset(
+    c.name for c in CurrencyRate.__table__.columns if c.name not in _RESERVED_COLUMNS
+)
+
 
 def _auto_decimals(value: float, sig_figures: int) -> int:
     """Decimal places needed to display `value` at `sig_figures` significant digits."""
@@ -31,27 +36,6 @@ def _auto_decimals(value: float, sig_figures: int) -> int:
         return DECIMALS_MIN
     magnitude = math.floor(math.log10(abs(value)))
     return max(DECIMALS_MIN, min(DECIMALS_MAX, sig_figures - magnitude - 1))
-
-# Whitelist of valid currency column names — prevents SQL injection via user input.
-_RESERVED_COLUMNS = {"id", "created_at"}
-SUPPORTED_CURRENCY_CODES: frozenset[str] = frozenset(
-    c.name for c in CurrencyRate.__table__.columns if c.name not in _RESERVED_COLUMNS
-)
-
-# (window_delta, bucket_unit) per range.
-# bucket_unit None = raw hourly rows; window None = "all available data".
-_RANGE_CONFIG: dict[HistoryRange, tuple[timedelta | None, str | None]] = {
-    HistoryRange.ONE_DAY:      (timedelta(days=1),      None),
-    HistoryRange.ONE_WEEK:     (timedelta(days=7),      None),
-    HistoryRange.ONE_MONTH:    (timedelta(days=30),     "day"),
-    HistoryRange.THREE_MONTHS: (timedelta(days=90),     "day"),
-    HistoryRange.SIX_MONTHS:   (timedelta(days=180),    "day"),
-    HistoryRange.ONE_YEAR:     (timedelta(days=365),    "day"),
-    HistoryRange.THREE_YEARS:  (timedelta(days=365*3),  "week"),
-    HistoryRange.FIVE_YEARS:   (timedelta(days=365*5),  "week"),
-    HistoryRange.TEN_YEARS:    (timedelta(days=365*10), "month"),
-    HistoryRange.ALL:          (None,                   None),  # auto-picked below
-}
 
 
 def _auto_bucket_for_span(span: timedelta) -> str | None:
@@ -66,8 +50,6 @@ def _auto_bucket_for_span(span: timedelta) -> str | None:
 
 
 def _build_point(ts: datetime, base_value: float, quote_value: float) -> HistoryPoint:
-    # Don't round here — final precision is applied uniformly after the pair-wide
-    # decimal count is known from the most recent rate.
     return HistoryPoint(
         timestamp=int(ts.timestamp()),
         date=ts.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -76,7 +58,6 @@ def _build_point(ts: datetime, base_value: float, quote_value: float) -> History
 
 
 def _classify_direction(absolute_change: float, rate_decimals: int) -> TrendDirection:
-    # "Flat" if the change is smaller than the displayable precision.
     threshold = 10 ** (-rate_decimals)
     if absolute_change > threshold:
         return TrendDirection.UP
@@ -86,7 +67,11 @@ def _classify_direction(absolute_change: float, rate_decimals: int) -> TrendDire
 
 
 async def get_currency_history(
-    db: AsyncSession, base: str, quote: str, range_: HistoryRange,
+    db: AsyncSession,
+    base: str,
+    quote: str,
+    start_date: date,
+    end_date: date,
 ) -> CurrencyHistoryResponse:
     base = base.upper()
     quote = quote.upper()
@@ -94,40 +79,32 @@ async def get_currency_history(
         raise HTTPException(status_code=400, detail=f"Unsupported base currency: {base}")
     if quote not in SUPPORTED_CURRENCY_CODES:
         raise HTTPException(status_code=400, detail=f"Unsupported quote currency: {quote}")
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=400,
+            detail=f"end_date ({end_date}) must be on or after start_date ({start_date}).",
+        )
 
-    window, bucket_unit = _RANGE_CONFIG[range_]
-    now = datetime.now(timezone.utc)
-    today_iso = now.isoformat().replace("+00:00", "Z")
+    # Convert calendar dates to inclusive UTC window: [start 00:00, end+1 00:00).
+    window_start = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+    window_end = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+    bucket_unit = _auto_bucket_for_span(window_end - window_start)
 
     base_col = getattr(CurrencyRate, base)
     quote_col = getattr(CurrencyRate, quote)
 
-    # For ALL: window starts at the earliest available row; bucket auto-picked from span.
-    if window is None:
-        earliest_row = (await db.execute(
-            select(func.min(CurrencyRate.created_at))
-            .where(base_col.isnot(None))
-            .where(quote_col.isnot(None))
-            .where(base_col > 0)
-        )).scalar_one_or_none()
-        if earliest_row is None:
-            return CurrencyHistoryResponse(
-                base_currency=base, quote_currency=quote, range=range_,
-                interval="hour", today_date=today_iso, data_points=[],
-            )
-        earliest = earliest_row if earliest_row.tzinfo else earliest_row.replace(tzinfo=timezone.utc)
-        since = earliest
-        bucket_unit = _auto_bucket_for_span(now - earliest)
-    else:
-        since = now - window
+    base_filters = [
+        CurrencyRate.created_at >= window_start,
+        CurrencyRate.created_at < window_end,
+        base_col.isnot(None),
+        quote_col.isnot(None),
+        base_col > 0,
+    ]
 
     if bucket_unit is None:
         stmt = (
             select(CurrencyRate.created_at, base_col, quote_col)
-            .where(CurrencyRate.created_at >= since)
-            .where(base_col.isnot(None))
-            .where(quote_col.isnot(None))
-            .where(base_col > 0)
+            .where(*base_filters)
             .order_by(CurrencyRate.created_at.asc())
         )
         rows = (await db.execute(stmt)).all()
@@ -137,10 +114,7 @@ async def get_currency_history(
         bucket = func.date_trunc(bucket_unit, CurrencyRate.created_at)
         stmt = (
             select(bucket.label("bucket"), func.avg(base_col), func.avg(quote_col))
-            .where(CurrencyRate.created_at >= since)
-            .where(base_col.isnot(None))
-            .where(quote_col.isnot(None))
-            .where(base_col > 0)
+            .where(*base_filters)
             .group_by(bucket)
             .order_by(bucket.asc())
         )
@@ -151,16 +125,13 @@ async def get_currency_history(
         ]
         interval = bucket_unit
 
-    start_iso = since.isoformat().replace("+00:00", "Z")
-
     if not data_points:
         return CurrencyHistoryResponse(
             base_currency=base,
             quote_currency=quote,
-            range=range_,
+            start_date=start_date,
+            end_date=end_date,
             interval=interval,
-            start_date=start_iso,
-            today_date=today_iso,
             data_points=[],
         )
 
@@ -168,8 +139,6 @@ async def get_currency_history(
     raw_current = rates[-1]
     raw_starting = rates[0]
 
-    # Pair-wide decimals derived from the most recent rate keep all points and
-    # stats at a consistent scale (no ragged chart).
     rate_decimals = _auto_decimals(raw_current, RATE_SIG_FIGURES)
     for point in data_points:
         point.rate = round(point.rate, rate_decimals)
@@ -194,10 +163,9 @@ async def get_currency_history(
     return CurrencyHistoryResponse(
         base_currency=base,
         quote_currency=quote,
-        range=range_,
+        start_date=start_date,
+        end_date=end_date,
         interval=interval,
-        start_date=start_iso,
-        today_date=today_iso,
         starting_rate=starting_rate,
         current_rate=current_rate,
         highest_rate=highest_rate,
