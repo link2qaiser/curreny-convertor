@@ -1,4 +1,5 @@
 import logging
+import math
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
@@ -15,9 +16,21 @@ from .schema import (
 
 logger = logging.getLogger(__name__)
 
-# Precision for displayed numbers in the API response.
-RATE_DECIMALS = 6
-PERCENT_DECIMALS = 2
+# Auto-tuned precision: target a fixed number of significant figures so the
+# response stays readable for both large rates (USD/IDR ~16,000) and very
+# small ones (BTC pairs ~0.00001), and so tiny % changes never round to 0.
+RATE_SIG_FIGURES = 6
+PERCENT_SIG_FIGURES = 3
+DECIMALS_MIN = 2
+DECIMALS_MAX = 10
+
+
+def _auto_decimals(value: float, sig_figures: int) -> int:
+    """Decimal places needed to display `value` at `sig_figures` significant digits."""
+    if value is None or value == 0 or not math.isfinite(value):
+        return DECIMALS_MIN
+    magnitude = math.floor(math.log10(abs(value)))
+    return max(DECIMALS_MIN, min(DECIMALS_MAX, sig_figures - magnitude - 1))
 
 # Whitelist of valid currency column names — prevents SQL injection via user input.
 _RESERVED_COLUMNS = {"id", "created_at"}
@@ -53,17 +66,18 @@ def _auto_bucket_for_span(span: timedelta) -> str | None:
 
 
 def _build_point(ts: datetime, base_value: float, quote_value: float) -> HistoryPoint:
-    rate = round(quote_value / base_value, RATE_DECIMALS)
+    # Don't round here — final precision is applied uniformly after the pair-wide
+    # decimal count is known from the most recent rate.
     return HistoryPoint(
         timestamp=int(ts.timestamp()),
         date=ts.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
-        rate=rate,
+        rate=quote_value / base_value,
     )
 
 
-def _classify_direction(absolute_change: float) -> TrendDirection:
+def _classify_direction(absolute_change: float, rate_decimals: int) -> TrendDirection:
     # "Flat" if the change is smaller than the displayable precision.
-    threshold = 10 ** (-RATE_DECIMALS)
+    threshold = 10 ** (-rate_decimals)
     if absolute_change > threshold:
         return TrendDirection.UP
     if absolute_change < -threshold:
@@ -151,17 +165,31 @@ async def get_currency_history(
         )
 
     rates = [point.rate for point in data_points]
-    starting_rate = rates[0]
-    current_rate = rates[-1]
-    highest_rate = max(rates)
-    lowest_rate = min(rates)
+    raw_current = rates[-1]
+    raw_starting = rates[0]
 
-    absolute_change = round(current_rate - starting_rate, RATE_DECIMALS)
-    percent_change = (
-        round((absolute_change / starting_rate) * 100.0, PERCENT_DECIMALS)
-        if starting_rate else None
-    )
-    direction = _classify_direction(absolute_change)
+    # Pair-wide decimals derived from the most recent rate keep all points and
+    # stats at a consistent scale (no ragged chart).
+    rate_decimals = _auto_decimals(raw_current, RATE_SIG_FIGURES)
+    for point in data_points:
+        point.rate = round(point.rate, rate_decimals)
+
+    starting_rate = round(raw_starting, rate_decimals)
+    current_rate = round(raw_current, rate_decimals)
+    highest_rate = round(max(rates), rate_decimals)
+    lowest_rate = round(min(rates), rate_decimals)
+
+    raw_change = raw_current - raw_starting
+    absolute_change = round(raw_change, rate_decimals)
+
+    if raw_starting:
+        raw_pct = (raw_change / raw_starting) * 100.0
+        percent_decimals = _auto_decimals(raw_pct, PERCENT_SIG_FIGURES)
+        percent_change = round(raw_pct, percent_decimals)
+    else:
+        percent_change = None
+
+    direction = _classify_direction(raw_change, rate_decimals)
 
     return CurrencyHistoryResponse(
         base_currency=base,

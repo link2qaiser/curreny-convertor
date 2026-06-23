@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Currency Converter API",
     description="Provides pre-signed download URLs for the latest fiat and cryptocurrency exchange rates (150+ fiat currencies and top 50 cryptos, base USD). Rates are refreshed periodically from OpenExchangeRates and CoinMarketCap.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 app.add_middleware(RateLimitMiddleware)
